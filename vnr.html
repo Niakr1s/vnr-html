@@ -1,0 +1,289 @@
+<html lang="ja">
+
+<head>
+	<meta charset="utf-8">
+	<title>Visual Novel Reader</title>
+	<style type="text/css">
+		body {
+			background-color: #202020;
+			color: #BCBCBC;
+		}
+
+		.control_area {
+			display: flex;
+		}
+
+		.control_area > * {
+			display: inline-block;
+			vertical-align: middle;
+		}
+
+		.flex-right {
+			margin-left: auto;
+		}
+
+		form {
+			margin: 0;
+		}
+
+		.text_history_status {
+			font-size: 12px;
+			margin-left: 10px;
+		}
+
+		.current_line {
+			margin: 20px 10px 10px 10px;
+			font-size: 40px;
+		}
+
+		button {
+			border: none;
+			outline: none;
+			background-color: transparent;
+		}
+
+		.red {
+			color: red;
+		}
+
+		.green {
+			color: green;
+		}
+
+		.white {
+			color: #BCBCBC;
+		}
+	</style>
+</head>
+
+<body id="body">
+	<div class="control_area">
+		<button id="copy_button" class="white">copy</button>
+		<button id="delete_button" class="red flex-right"><</button>
+		<button id="prev_button" class="green"><</button>
+		<button id="next_button" class="green">></button>
+		<button id="last_button" class="green">>></button>
+		<div id="text_history_status" class="text_history_status"></div>
+	</div>
+		
+	<div id="current_line" class="current_line"></div>
+
+	<script>
+		const textHistory = {
+			queue: [],
+			max: 99,
+			current: 0,
+
+			onUpdateCallbacks: [],
+
+			onUpdate(cb) {
+				this.onUpdateCallbacks.push(cb);
+			},
+
+			emitUpdated() {
+				for (const cb of this.onUpdateCallbacks) {
+					cb();
+				}
+			},
+			
+			isEmpty() {
+				return this.queue.length === 0;
+			},
+			isLast() {
+				if (this.queue.length === 0) return true;
+				return this.current === this.queue.length - 1;
+			},
+			isFirst() {
+				return this.current === 0;
+			},
+
+			fixCurrentBounded() {
+				if (this.queue.length === 0) {
+					this.current = 0;
+				} else {
+					if (this.current >= this.queue.length) {
+						this.last();
+					}
+				}
+				if (this.current < 0) this.first();
+				this.emitUpdated();
+			},
+
+			push(textLine) {
+				this.queue.push(textLine);
+				while (this.queue.length > this.max) {
+					this.queue.shift();
+				}
+				this.last();
+				this.emitUpdated();
+			},
+			delete() {
+				this.queue.pop();
+				this.prev();
+				this.emitUpdated();
+			},
+			prev() {
+				this.current--;
+				this.fixCurrentBounded();
+				this.emitUpdated();
+			},
+			next() {
+				this.current++;
+				this.fixCurrentBounded();
+				this.emitUpdated();
+			},
+			first() {
+				this.current = 0;
+				this.emitUpdated();
+			},
+			last() {
+				this.current = this.queue.length === 0 ? 0 : this.queue.length - 1;
+				this.emitUpdated();
+			},
+
+			getCurrentLine() {
+				if (this.current < 0) return "";
+				return this.queue[this.current];
+			}
+		}
+
+		const clipboard = {
+			lastTextLine: '',
+
+			copy(containerid) {
+				const result = {
+					copied: true,
+				}
+
+				const element = document.getElementById(containerid);
+				if (element.textContent === this.lastTextLine) return {...result, copied: false};
+
+				const range = document.createRange();
+				range.selectNode(document.getElementById(containerid));
+				window.getSelection().addRange(range);
+				document.execCommand("copy");
+				window.getSelection().removeRange(range);
+				return result;
+			},
+		}
+
+		const clipboardObserver = {
+			skipNextClipboard: false,
+
+			addToTextHistory(textLine) {
+				if (!this.skipNextClipboard) {
+					textHistory.push(textLine);
+				}
+				this.skipNextClipboard = false;
+			},
+
+			observer: new MutationObserver((mutationList, observer) => {
+				debugger
+				let ps = document.getElementsByTagName('p');
+
+				// removing all except last
+				while (ps.length > 0) {
+					const textLine = ps[0].textContent;
+					clipboard.lastTextLine = textLine;
+					ps[0].remove();
+					clipboardObserver.addToTextHistory(textLine);
+				}
+			}),
+
+			start() {
+				this.observer.observe(document.getElementById('body'), { childList: true });
+			},
+		}
+
+		const gui = {
+			init() {
+				this.buttons.init();
+				this.update();
+				textHistory.onUpdate(this.update.bind(this));
+			},
+
+			buttons: {
+				copyButton: document.getElementById("copy_button"),
+				deleteButton: document.getElementById("delete_button"),
+				prevButton: document.getElementById("prev_button"),
+				nextButton: document.getElementById("next_button"),
+				lastButton: document.getElementById("last_button"),
+
+				updatePrevButton() {
+					if (textHistory.isFirst()) {
+						this.prevButton.disabled = true;
+					} else {
+						this.prevButton.disabled = false;
+					}
+				},
+				updateNextButton() {
+					if (textHistory.isLast()) {
+						this.nextButton.disabled = true;
+					} else {
+						this.nextButton.disabled = false;
+					}
+				},
+				updateDeleteButton() {
+					if (textHistory.isEmpty()) {
+						this.deleteButton.disabled = true;
+					} else {
+						this.deleteButton.disabled = false;
+					}
+				},
+
+				init(){
+					this.copyButton.onclick = () => {
+						const { copied } = clipboard.copy('current_line');
+						clipboardObserver.skipNextClipboard |= copied;
+					};
+
+					this.prevButton.onclick = () => {
+						textHistory.prev();
+					};
+
+					this.nextButton.onclick = () => {
+						textHistory.next();
+					};
+
+					this.deleteButton.onclick = () => {
+						textHistory.delete();
+					};
+
+					this.lastButton.onclick = () => {
+						textHistory.last();
+					};
+				},
+			},
+
+			update() {
+				this.showCurrentLine();
+				this.showTextHistoryStatus();
+				this.updateButtons();
+			},
+			showCurrentLine() {
+				const currentLine = textHistory.getCurrentLine();
+				let currentLineElement = document.getElementById('current_line');
+				currentLineElement.textContent = currentLine;
+			},
+			showTextHistoryStatus() {
+				let textHistoryStatusElement = document.getElementById('text_history_status');
+
+				function makeTextContent(current, max) {
+					return `${current}/${max}`;
+				};
+
+				textHistoryStatusElement.textContent = textHistory.isEmpty() ? makeTextContent(0, 0) : makeTextContent(textHistory.current + 1, textHistory.queue.length);
+			},
+			updateButtons() {
+				this.buttons.updateDeleteButton();
+				this.buttons.updateNextButton();
+				this.buttons.updatePrevButton();
+			},
+		}
+
+		clipboardObserver.start();
+		gui.init();
+	</script>
+</body>
+
+</html>

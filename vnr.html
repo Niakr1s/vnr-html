@@ -118,8 +118,10 @@
 				this.emitUpdated();
 			},
 			delete() {
-				this.queue.pop();
+				if (this.queue.length === 0) return;
+				this.queue.splice(this.current, 1);
 				this.prev();
+				this.fixCurrentBounded();
 				this.emitUpdated();
 			},
 			prev() {

@@ -19,23 +19,29 @@ const startServer = () => {
       ...req.params,
     }
 
-    const { translation } = await translate({
-      sentence: options.sentence,
-      sourceLangauge: options.sourceLanguage,
-      targetLanguage: options.targetLanguage,
-    })
-
-    const result = {
-      translation,
-      sentence: options.sentence,
-      sourceLanguage: options.sourceLanguage,
-      targetLanguage: options.targetLanguage,
+    try {
+      const { translation } = await translate({
+        sentence: options.sentence,
+        sourceLangauge: options.sourceLanguage,
+        targetLanguage: options.targetLanguage,
+      })
+      
+      const result = {
+        translation,
+        sentence: options.sentence,
+        sourceLanguage: options.sourceLanguage,
+        targetLanguage: options.targetLanguage,
+      }
+      
+      const resultJSON = JSON.stringify(result);
+      res.write(JSON.stringify(resultJSON), () => {
+        console.log(`SUCCESS ${options.sourceLanguage} => ${options.targetLanguage}\n${options.sentence}\n${resultJSON}\n`);
+      });
+    } catch(_) {
+      console.log(`FAILED ${options.sourceLanguage} => ${options.targetLanguage}\n${options.sentence}\n`);
+    } finally {
+      res.end();
     }
-
-    const resultJSON = JSON.stringify(result);
-    res.end(JSON.stringify(resultJSON), () => {
-      console.log(`${options.sourceLanguage} => ${options.targetLanguage}\n${options.sentence}\n${resultJSON}\n`);
-    });
   })
 
   return new Promise((resolve) => {

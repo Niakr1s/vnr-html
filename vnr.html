@@ -167,11 +167,12 @@
 			addTranslation(options = { textLine, translation, targetLanguage }) {
 				const { textLine, translation, targetLanguage } = options;
 				console.log('addTranslation:', options)
-				let found = this.queue.findIndex((el) => el.textLine === options.textLine);
-				if ( found === -1 ) return;
-
-				this.queue[found].translation ||= {};
-				this.queue[found].translation[targetLanguage] = translation;
+				this.queue = this.queue.map((el, idx) => {
+					if (el.textLine !== textLine) return el;
+					el.translation ||= {};
+					el.translation[targetLanguage] = translation;
+					return el;
+				})
 				modelUpdatedEmitter.emit();
 			},
 

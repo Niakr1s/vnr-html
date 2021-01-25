@@ -9,17 +9,21 @@
 			color: #BCBCBC;
 		}
 
-		.control_area {
+		.flex {
 			display: flex;
 		}
 
-		.control_area > * {
+		.flex > * {
 			display: inline-block;
 			vertical-align: middle;
 		}
 
 		.flex-right {
 			margin-left: auto;
+		}
+
+		.flex-left {
+			margin-right: auto;
 		}
 
 		form {
@@ -54,11 +58,19 @@
 			color: #BCBCBC;
 		}
 
-		.translation {
+		.bottom {
 			position: absolute;
 			bottom: 0px;
 			left: 10px;
+			right: 10px;
+		}
+
+		.translation {
 			font-size: 20px;
+		}
+
+		.homepage {
+			font-size: 12px;
 		}
 
 		.lang {
@@ -70,18 +82,23 @@
 </head>
 
 <body id="body">
-	<div class="control_area">
-		<button id="copy_button" class="white">copy</button>
+	<div class="flex">
+		<div class="homepage"><a href="https://github.com/Niakr1s/vnr-html">github</a></div>
+		
 		<select id="lang" class="lang flex-right">
 			<option value="ru">ru</option>
 			<option value="en">en</option>
 		</select>
-				
+		
 		<button id="delete_button" class="red"><</button>
 		<button id="prev_button" class="green"><</button>
 		<button id="next_button" class="green">></button>
 		<button id="last_button" class="green">>></button>
 		<div id="text_history_status" class="text_history_status"></div>
+		<button id="copy_button" class="white">copy</button>
+	</div>
+
+	<div class="bottom">
 		<div id="translation" class="translation"></div>
 	</div>
 		

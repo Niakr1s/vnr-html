@@ -60,13 +60,24 @@
 			left: 10px;
 			font-size: 20px;
 		}
+
+		.lang {
+			background-color: transparent;
+			border: none;
+			color: #BCBCBC;
+		}
 	</style>
 </head>
 
 <body id="body">
 	<div class="control_area">
 		<button id="copy_button" class="white">copy</button>
-		<button id="delete_button" class="red flex-right"><</button>
+		<select id="lang" class="lang flex-right">
+			<option value="ru">ru</option>
+			<option value="en">en</option>
+		</select>
+				
+		<button id="delete_button" class="red"><</button>
 		<button id="prev_button" class="green"><</button>
 		<button id="next_button" class="green">></button>
 		<button id="last_button" class="green">>></button>
@@ -77,6 +88,11 @@
 	<div id="current_line" class="current_line"></div>
 
 	<script>
+		const getTargetLanguage = () => {
+			const langElement = document.getElementById('lang');
+			return langElement.value || 'en';
+		}
+
 		class TranslationRequest {
 			// cb: ({ translation: string }) => void
 			constructor(cb) {
@@ -153,11 +169,14 @@
 				this.emitUpdated();
 			},
 
-			addTranslation(textLine, translation) {
-				let found = this.queue.findIndex((el) => el.textLine === textLine);
+			addTranslation(options = { textLine, translation, targetLanguage }) {
+				const { textLine, translation, targetLanguage } = options;
+				console.log('addTranslation:', options)
+				let found = this.queue.findIndex((el) => el.textLine === options.textLine);
 				if ( found === -1 ) return;
 
-				this.queue[found].translation = translation;
+				this.queue[found].translation ||= {};
+				this.queue[found].translation[targetLanguage] = translation;
 				this.emitUpdated();
 			},
 
@@ -315,9 +334,11 @@
 				let currentLineElement = document.getElementById('current_line');
 				currentLineElement.textContent = currentLine.textLine;
 				
-				let translation = currentLine.translation || '';
-				let translationElement = document.getElementById('translation');
-				translationElement.textContent = currentLine.translation;
+				const targetLanguage = getTargetLanguage();
+				if (currentLine.translation && currentLine.translation[targetLanguage]) {
+					let translationElement = document.getElementById('translation');
+					translationElement.textContent = currentLine.translation[targetLanguage];
+				}
 			},
 			showTextHistoryStatus() {
 				let textHistoryStatusElement = document.getElementById('text_history_status');
@@ -339,17 +360,17 @@
 		gui.init();
 
 		const translationElement = document.getElementById('translation');
-		const translationRequest = new TranslationRequest(({ translation, sentence }) => {
-
-			textHistory.addTranslation(sentence, translation);
+		const translationRequest = new TranslationRequest(({ translation, sentence, targetLanguage }) => {
+			textHistory.addTranslation({ textLine: sentence, translation, targetLanguage });
 		});
 
 		textHistory.onUpdate(({ textLine, translation }) => {
-			if (translation) return;
+			const targetLanguage = getTargetLanguage();
+			if (translation && translation[targetLanguage]) return;
 
 			translationRequest.translate({
 				sentence: textLine,
-				targetLanguage: 'ru',
+				targetLanguage,
 			})
 		})
 	</script>

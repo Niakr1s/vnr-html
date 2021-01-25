@@ -88,11 +88,6 @@
 	<div id="current_line" class="current_line"></div>
 
 	<script>
-		const getTargetLanguage = () => {
-			const langElement = document.getElementById('lang');
-			return langElement.value || 'en';
-		}
-
 		class TranslationRequest {
 			// cb: ({ translation: string }) => void
 			constructor(cb) {
@@ -266,8 +261,21 @@
 		const gui = {
 			init() {
 				this.buttons.init();
+				this.langSelector.init();
 				this.update();
 				modelUpdatedEmitter.onUpdate(this.update.bind(this));
+			},
+
+			langSelector: {
+				element: document.getElementById("lang"),
+				getTargetLanguage() {
+					return this.element.value || 'en';
+				},
+				init() {
+					this.element.onchange = function() {
+						modelUpdatedEmitter.emit();
+					}
+				},
 			},
 
 			buttons: {
@@ -334,7 +342,7 @@
 				let currentLineElement = document.getElementById('current_line');
 				currentLineElement.textContent = currentLine.textLine;
 				
-				const targetLanguage = getTargetLanguage();
+				const targetLanguage = gui.langSelector.getTargetLanguage();
 				if (currentLine.translation && currentLine.translation[targetLanguage]) {
 					let translationElement = document.getElementById('translation');
 					translationElement.textContent = currentLine.translation[targetLanguage];
@@ -366,7 +374,7 @@
 
 		modelUpdatedEmitter.onUpdate(() => {
 			const { textLine, translation } = textHistory.getCurrentLine();
-			const targetLanguage = getTargetLanguage();
+			const targetLanguage = gui.langSelector.getTargetLanguage();
 			if (translation && translation[targetLanguage]) return;
 
 			translationRequest.translate({

@@ -109,15 +109,15 @@
 			max: 99,
 			current: 0,
 
-			onUpdateCallbacks: [],
+			_onUpdateCallbacks: [],
 
 			onUpdate(cb) {
-				this.onUpdateCallbacks.push(cb);
+				this._onUpdateCallbacks.push(cb);
 			},
 
 			emitUpdated() {
-				for (const cb of this.onUpdateCallbacks) {
-					cb();
+				for (const cb of this._onUpdateCallbacks) {
+					cb(this.getCurrentLine());
 				}
 			},
 			
@@ -156,7 +156,7 @@
 			addTranslation(textLine, translation) {
 				let found = this.queue.findIndex((el) => el.textLine === textLine);
 				if ( found === -1 ) return;
-				
+
 				this.queue[found].translation = translation;
 				this.emitUpdated();
 			},
@@ -194,15 +194,10 @@
 		}
 
 		const clipboard = {
-			onNew: [],
-
 			_lastTextLine: '',
 
 			setLastTextLine(text) {
 				clipboard._lastTextLine = text;
-				clipboard.onNew.forEach((cb) => {
-					cb(text);
-				})
 			},
 
 			copy(containerid) {
@@ -349,7 +344,9 @@
 			textHistory.addTranslation(sentence, translation);
 		});
 
-		clipboard.onNew.push((textLine) => {
+		textHistory.onUpdate(({ textLine, translation }) => {
+			if (translation) return;
+
 			translationRequest.translate({
 				sentence: textLine,
 				targetLanguage: 'ru',

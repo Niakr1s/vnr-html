@@ -1,2 +1,3 @@
-const { translate, translateEnd } = require('./src/scraper.js');
+const { startServer } = require('./src/server.js');
 
+startServer();

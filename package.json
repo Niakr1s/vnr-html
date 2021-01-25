@@ -18,6 +18,8 @@
   },
   "homepage": "https://github.com/Niakr1s/vnr-html#readme",
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
     "puppeteer": "^5.5.0"
   },
   "devDependencies": {

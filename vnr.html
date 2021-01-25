@@ -53,6 +53,13 @@
 		.white {
 			color: #BCBCBC;
 		}
+
+		.translation {
+			position: absolute;
+			bottom: 0px;
+			left: 10px;
+			font-size: 20px;
+		}
 	</style>
 </head>
 
@@ -64,11 +71,38 @@
 		<button id="next_button" class="green">></button>
 		<button id="last_button" class="green">>></button>
 		<div id="text_history_status" class="text_history_status"></div>
+		<div id="translation" class="translation"></div>
 	</div>
 		
 	<div id="current_line" class="current_line"></div>
 
 	<script>
+		class TranslationRequest {
+			// cb: ({ translation: string }) => void
+			constructor(cb) {
+				this.xhr = new XMLHttpRequest();
+				this.xhr.onreadystatechange = () => {
+					try {
+						const result = JSON.parse(this.xhr.responseText);
+						cb(result);
+					} catch(_) { }
+				}
+			}
+
+			translate(options = { sourceLangauge, targetLanguage, sentence }) {
+				options = {
+					sentence: '',
+					sourceLangauge: 'auto',
+					targetLanguage: 'en',
+
+					...options,
+				}
+
+				this.xhr.open('GET', `http://localhost:53532/translate/${options.sentence}/${options.sourceLangauge}/${options.targetLanguage}`);
+				this.xhr.send();
+			}
+		}
+
 		const textHistory = {
 			queue: [],
 			max: 99,
@@ -150,7 +184,16 @@
 		}
 
 		const clipboard = {
-			lastTextLine: '',
+			onNew: [],
+
+			_lastTextLine: '',
+
+			setLastTextLine(text) {
+				clipboard._lastTextLine = text;
+				clipboard.onNew.forEach((cb) => {
+					cb(text);
+				})
+			},
 
 			copy(containerid) {
 				const result = {
@@ -158,7 +201,7 @@
 				}
 
 				const element = document.getElementById(containerid);
-				if (element.textContent === this.lastTextLine) return {...result, copied: false};
+				if (element.textContent === this._lastTextLine) return {...result, copied: false};
 
 				const range = document.createRange();
 				range.selectNode(document.getElementById(containerid));
@@ -185,7 +228,7 @@
 				// removing all except last
 				while (ps.length > 0) {
 					const textLine = ps[0].textContent;
-					clipboard.lastTextLine = textLine;
+					clipboard.setLastTextLine(textLine);
 					ps[0].remove();
 					clipboardObserver.addToTextHistory(textLine);
 				}
@@ -284,6 +327,17 @@
 
 		clipboardObserver.start();
 		gui.init();
+
+		const translationElement = document.getElementById('translation');
+		const translationRequest = new TranslationRequest(({ translation }) => {
+			translationElement.textContent = translation;
+		});
+		clipboard.onNew.push((lastTextLine) => {
+			translationRequest.translate({
+				sentence: lastTextLine,
+				targetLanguage: 'ru',
+			})
+		})
 	</script>
 </body>
 

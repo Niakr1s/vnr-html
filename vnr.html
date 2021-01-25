@@ -89,18 +89,14 @@
 
 	<script>
 		class TranslationRequest {
+			_memory = {};
+
 			// cb: ({ translation: string }) => void
 			constructor(cb) {
-				this.xhr = new XMLHttpRequest();
-				this.xhr.onreadystatechange = () => {
-					try {
-						const result = JSON.parse(JSON.parse(this.xhr.responseText));
-						cb(result);
-					} catch(_) { }
-				}
+				this._cb = cb;
 			}
 
-			translate(options = { sourceLangauge, targetLanguage, sentence }) {
+			async translate(options = { sourceLangauge, targetLanguage, sentence }) {
 				options = {
 					sentence: '',
 					sourceLangauge: 'auto',
@@ -109,8 +105,18 @@
 					...options,
 				}
 
-				this.xhr.open('GET', `http://localhost:53532/translate/${options.sentence}/${options.sourceLangauge}/${options.targetLanguage}`);
-				this.xhr.send();
+				if (this._memory[options.sentence]) return;
+				this._memory[options.sentence] = true;
+
+				try {
+					console.log(`fetching translation for ${options.sentence}`)
+					const res = await fetch(`http://localhost:53532/translate/${options.sentence}/${options.sourceLangauge}/${options.targetLanguage}`);
+					this._cb(JSON.parse(await res.json()));
+				} catch {
+
+				} finally {
+					delete this._memory[options.sentence];
+				}
 			}
 		}
 

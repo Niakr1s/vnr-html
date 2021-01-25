@@ -119,23 +119,23 @@
 			}
 		}
 
+		class Emitter {
+			_callbacks = [];
+			onUpdate(cb) {
+				this._callbacks.push(cb);
+			}
+			emit() {
+				this._callbacks.forEach((cb) => cb());
+			}
+		}
+
+		const modelUpdatedEmitter = new Emitter();
+
 		const textHistory = {
 			// { textLine, translation }
 			queue: [],
 			max: 99,
 			current: 0,
-
-			_onUpdateCallbacks: [],
-
-			onUpdate(cb) {
-				this._onUpdateCallbacks.push(cb);
-			},
-
-			emitUpdated() {
-				for (const cb of this._onUpdateCallbacks) {
-					cb(this.getCurrentLine());
-				}
-			},
 			
 			isEmpty() {
 				return this.queue.length === 0;
@@ -157,7 +157,7 @@
 					}
 				}
 				if (this.current < 0) this.first();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 
 			push(textLine) {
@@ -166,7 +166,7 @@
 					this.queue.shift();
 				}
 				this.last();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 
 			addTranslation(options = { textLine, translation, targetLanguage }) {
@@ -177,7 +177,7 @@
 
 				this.queue[found].translation ||= {};
 				this.queue[found].translation[targetLanguage] = translation;
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 
 			delete() {
@@ -185,25 +185,25 @@
 				this.queue.splice(this.current, 1);
 				this.prev();
 				this.fixCurrentBounded();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 			prev() {
 				this.current--;
 				this.fixCurrentBounded();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 			next() {
 				this.current++;
 				this.fixCurrentBounded();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 			first() {
 				this.current = 0;
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 			last() {
 				this.current = this.queue.length === 0 ? 0 : this.queue.length - 1;
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 
 			getCurrentLine() {
@@ -267,7 +267,7 @@
 			init() {
 				this.buttons.init();
 				this.update();
-				textHistory.onUpdate(this.update.bind(this));
+				modelUpdatedEmitter.onUpdate(this.update.bind(this));
 			},
 
 			buttons: {
@@ -364,7 +364,8 @@
 			textHistory.addTranslation({ textLine: sentence, translation, targetLanguage });
 		});
 
-		textHistory.onUpdate(({ textLine, translation }) => {
+		modelUpdatedEmitter.onUpdate(() => {
+			const { textLine, translation } = textHistory.getCurrentLine();
 			const targetLanguage = getTargetLanguage();
 			if (translation && translation[targetLanguage]) return;
 

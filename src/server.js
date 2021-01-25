@@ -18,15 +18,23 @@ const startServer = () => {
       targetLanguage: 'en',
       ...req.params,
     }
-    
-    const result = await translate({
+
+    const { translation } = await translate({
       sentence: options.sentence,
       sourceLangauge: options.sourceLanguage,
       targetLanguage: options.targetLanguage,
     })
 
-    res.end(JSON.stringify(result), () => {
-      console.log(`${options.sourceLanguage} => ${options.targetLanguage}\n${options.sentence}\n${result.translation}\n`);
+    const result = {
+      translation,
+      sentence: options.sentence,
+      sourceLanguage: options.sourceLanguage,
+      targetLanguage: options.targetLanguage,
+    }
+
+    const resultJSON = JSON.stringify(result);
+    res.end(JSON.stringify(resultJSON), () => {
+      console.log(`${options.sourceLanguage} => ${options.targetLanguage}\n${options.sentence}\n${resultJSON}\n`);
     });
   })
 

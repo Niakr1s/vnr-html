@@ -9,17 +9,21 @@
 			color: #BCBCBC;
 		}
 
-		.control_area {
+		.flex {
 			display: flex;
 		}
 
-		.control_area > * {
+		.flex > * {
 			display: inline-block;
 			vertical-align: middle;
 		}
 
 		.flex-right {
 			margin-left: auto;
+		}
+
+		.flex-left {
+			margin-right: auto;
 		}
 
 		form {
@@ -53,38 +57,103 @@
 		.white {
 			color: #BCBCBC;
 		}
+
+		.bottom {
+			position: absolute;
+			bottom: 0px;
+			left: 10px;
+			right: 10px;
+		}
+
+		.translation {
+			font-size: 20px;
+		}
+
+		.homepage {
+			font-size: 12px;
+		}
+
+		.lang {
+			background-color: transparent;
+			border: none;
+			color: #BCBCBC;
+		}
 	</style>
 </head>
 
 <body id="body">
-	<div class="control_area">
-		<button id="copy_button" class="white">copy</button>
-		<button id="delete_button" class="red flex-right"><</button>
+	<div class="flex">
+		<div class="homepage"><a href="https://github.com/Niakr1s/vnr-html">github</a></div>
+		
+		<select id="lang" class="lang flex-right">
+			<option value="ru">ru</option>
+			<option value="en">en</option>
+		</select>
+		
+		<button id="delete_button" class="red"><</button>
 		<button id="prev_button" class="green"><</button>
 		<button id="next_button" class="green">></button>
 		<button id="last_button" class="green">>></button>
 		<div id="text_history_status" class="text_history_status"></div>
+		<button id="copy_button" class="white">copy</button>
+	</div>
+
+	<div class="bottom">
+		<div id="translation" class="translation"></div>
 	</div>
 		
 	<div id="current_line" class="current_line"></div>
 
 	<script>
+		class TranslationRequest {
+			_memory = {};
+
+			// cb: ({ translation: string }) => void
+			constructor(cb) {
+				this._cb = cb;
+			}
+
+			async translate(options = { sourceLangauge, targetLanguage, sentence }) {
+				options = {
+					sentence: '',
+					sourceLangauge: 'auto',
+					targetLanguage: 'en',
+
+					...options,
+				}
+
+				if (this._memory[options.sentence]) return;
+				this._memory[options.sentence] = true;
+
+				try {
+					console.log(`fetching translation for ${options.sentence}`)
+					const res = await fetch(`http://localhost:53532/translate/${options.sentence}/${options.sourceLangauge}/${options.targetLanguage}`);
+					this._cb(JSON.parse(await res.json()));
+				} catch {
+
+				} finally {
+					delete this._memory[options.sentence];
+				}
+			}
+		}
+
+		class Emitter {
+			_callbacks = [];
+			onUpdate(cb) {
+				this._callbacks.push(cb);
+			}
+			emit() {
+				this._callbacks.forEach((cb) => cb());
+			}
+		}
+
+		const modelUpdatedEmitter = new Emitter();
+
 		const textHistory = {
+			// { textLine, translation }
 			queue: [],
 			max: 99,
 			current: 0,
-
-			onUpdateCallbacks: [],
-
-			onUpdate(cb) {
-				this.onUpdateCallbacks.push(cb);
-			},
-
-			emitUpdated() {
-				for (const cb of this.onUpdateCallbacks) {
-					cb();
-				}
-			},
 			
 			isEmpty() {
 				return this.queue.length === 0;
@@ -106,51 +175,68 @@
 					}
 				}
 				if (this.current < 0) this.first();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 
 			push(textLine) {
-				this.queue.push(textLine);
+				this.queue.push({ textLine });
 				while (this.queue.length > this.max) {
 					this.queue.shift();
 				}
 				this.last();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
+
+			addTranslation(options = { textLine, translation, targetLanguage }) {
+				const { textLine, translation, targetLanguage } = options;
+				console.log('addTranslation:', options)
+				this.queue = this.queue.map((el, idx) => {
+					if (el.textLine !== textLine) return el;
+					el.translation ||= {};
+					el.translation[targetLanguage] = translation;
+					return el;
+				})
+				modelUpdatedEmitter.emit();
+			},
+
 			delete() {
 				if (this.queue.length === 0) return;
 				this.queue.splice(this.current, 1);
 				this.prev();
 				this.fixCurrentBounded();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 			prev() {
 				this.current--;
 				this.fixCurrentBounded();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 			next() {
 				this.current++;
 				this.fixCurrentBounded();
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 			first() {
 				this.current = 0;
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 			last() {
 				this.current = this.queue.length === 0 ? 0 : this.queue.length - 1;
-				this.emitUpdated();
+				modelUpdatedEmitter.emit();
 			},
 
 			getCurrentLine() {
-				if (this.current < 0) return "";
+				if (this.current < 0) return;
 				return this.queue[this.current];
 			}
 		}
 
 		const clipboard = {
-			lastTextLine: '',
+			_lastTextLine: '',
+
+			setLastTextLine(text) {
+				clipboard._lastTextLine = text;
+			},
 
 			copy(containerid) {
 				const result = {
@@ -158,7 +244,7 @@
 				}
 
 				const element = document.getElementById(containerid);
-				if (element.textContent === this.lastTextLine) return {...result, copied: false};
+				if (element.textContent === this._lastTextLine) return {...result, copied: false};
 
 				const range = document.createRange();
 				range.selectNode(document.getElementById(containerid));
@@ -185,7 +271,7 @@
 				// removing all except last
 				while (ps.length > 0) {
 					const textLine = ps[0].textContent;
-					clipboard.lastTextLine = textLine;
+					clipboard.setLastTextLine(textLine);
 					ps[0].remove();
 					clipboardObserver.addToTextHistory(textLine);
 				}
@@ -199,8 +285,21 @@
 		const gui = {
 			init() {
 				this.buttons.init();
+				this.langSelector.init();
 				this.update();
-				textHistory.onUpdate(this.update.bind(this));
+				modelUpdatedEmitter.onUpdate(this.update.bind(this));
+			},
+
+			langSelector: {
+				element: document.getElementById("lang"),
+				getTargetLanguage() {
+					return this.element.value || 'en';
+				},
+				init() {
+					this.element.onchange = function() {
+						modelUpdatedEmitter.emit();
+					}
+				},
 			},
 
 			buttons: {
@@ -263,8 +362,17 @@
 			},
 			showCurrentLine() {
 				const currentLine = textHistory.getCurrentLine();
+				if (!currentLine) return;
 				let currentLineElement = document.getElementById('current_line');
-				currentLineElement.textContent = currentLine;
+				currentLineElement.textContent = currentLine.textLine;
+				
+				let translationElement = document.getElementById('translation');
+				const targetLanguage = gui.langSelector.getTargetLanguage();
+				if (currentLine.translation && currentLine.translation[targetLanguage]) {
+					translationElement.textContent = currentLine.translation[targetLanguage];
+				} else {
+					translationElement.textContent = '';
+				}
 			},
 			showTextHistoryStatus() {
 				let textHistoryStatusElement = document.getElementById('text_history_status');
@@ -284,6 +392,22 @@
 
 		clipboardObserver.start();
 		gui.init();
+
+		const translationElement = document.getElementById('translation');
+		const translationRequest = new TranslationRequest(({ translation, sentence, targetLanguage }) => {
+			textHistory.addTranslation({ textLine: sentence, translation, targetLanguage });
+		});
+
+		modelUpdatedEmitter.onUpdate(() => {
+			const { textLine, translation } = textHistory.getCurrentLine();
+			const targetLanguage = gui.langSelector.getTargetLanguage();
+			if (translation && translation[targetLanguage]) return;
+
+			translationRequest.translate({
+				sentence: textLine,
+				targetLanguage,
+			})
+		})
 	</script>
 </body>
 

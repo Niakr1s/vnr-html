@@ -1,0 +1,28 @@
+{
+  "name": "visual-novel-reader",
+  "version": "1.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "run": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Niakr1s/vnr-html.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Niakr1s/vnr-html/issues"
+  },
+  "homepage": "https://github.com/Niakr1s/vnr-html#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "puppeteer": "^5.5.0"
+  },
+  "devDependencies": {
+    "jest": "^26.6.3"
+  }
+}

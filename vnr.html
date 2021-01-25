@@ -342,10 +342,12 @@
 				let currentLineElement = document.getElementById('current_line');
 				currentLineElement.textContent = currentLine.textLine;
 				
+				let translationElement = document.getElementById('translation');
 				const targetLanguage = gui.langSelector.getTargetLanguage();
 				if (currentLine.translation && currentLine.translation[targetLanguage]) {
-					let translationElement = document.getElementById('translation');
 					translationElement.textContent = currentLine.translation[targetLanguage];
+				} else {
+					translationElement.textContent = '';
 				}
 			},
 			showTextHistoryStatus() {

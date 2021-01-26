@@ -40,6 +40,8 @@ module.exports = {
 
     const translation = await page.$eval('#target-dummydiv', el => el.textContent) || '';
 
+    page.close();
+
     return {
       translation,
     };

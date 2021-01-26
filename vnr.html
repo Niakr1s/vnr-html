@@ -155,7 +155,7 @@
 		const modelUpdatedEmitter = new Emitter();
 
 		const textHistory = {
-			// { textLine, translation }
+			// { sentence, translation }
 			queue: [],
 			max: 99,
 			current: 0,
@@ -183,8 +183,8 @@
 				modelUpdatedEmitter.emit();
 			},
 
-			push(textLine) {
-				this.queue.push({ textLine });
+			push(sentence) {
+				this.queue.push({ sentence });
 				while (this.queue.length > this.max) {
 					this.queue.shift();
 				}
@@ -192,11 +192,11 @@
 				modelUpdatedEmitter.emit();
 			},
 
-			addTranslation(options = { textLine, translation, targetLanguage }) {
-				const { textLine, translation, targetLanguage } = options;
+			addTranslation(options = { sentence, translation, targetLanguage }) {
+				const { sentence, translation, targetLanguage } = options;
 				console.log('addTranslation:', options)
 				this.queue = this.queue.map((el, idx) => {
-					if (el.textLine !== textLine) return el;
+					if (el.sentence !== sentence) return el;
 					el.translation ||= {};
 					el.translation[targetLanguage] = translation;
 					return el;
@@ -204,11 +204,11 @@
 				modelUpdatedEmitter.emit();
 			},
 
-			removeTranslation(options = { textLine, targetLanguage }) {
+			removeTranslation(options = { sentence, targetLanguage }) {
 				console.log('removeTranslation', options)
-				const { textLine, targetLanguage } = options;
+				const { sentence, targetLanguage } = options;
 				this.queue = this.queue.map((el, idx) => {
-					if (el.textLine !== textLine || !el.translation) return el;
+					if (el.sentence !== sentence || !el.translation) return el;
 					delete el.translation[targetLanguage];
 					return el;
 				})
@@ -274,9 +274,9 @@
 		const clipboardObserver = {
 			skipNextClipboard: false,
 
-			addToTextHistory(textLine) {
+			addToTextHistory(sentence) {
 				if (!this.skipNextClipboard) {
-					textHistory.push(textLine);
+					textHistory.push(sentence);
 				}
 				this.skipNextClipboard = false;
 			},
@@ -286,10 +286,10 @@
 
 				// removing all except last
 				while (ps.length > 0) {
-					const textLine = ps[0].textContent;
-					clipboard.setLastTextLine(textLine);
+					const sentence = ps[0].textContent;
+					clipboard.setLastTextLine(sentence);
 					ps[0].remove();
-					clipboardObserver.addToTextHistory(textLine);
+					clipboardObserver.addToTextHistory(sentence);
 				}
 			}),
 
@@ -382,7 +382,7 @@
 				const currentLine = textHistory.getCurrentLine();
 				if (!currentLine) return;
 				let currentLineElement = document.getElementById('current_line');
-				currentLineElement.textContent = currentLine.textLine;
+				currentLineElement.textContent = currentLine.sentence;
 				
 				let anchor = document.getElementById('translation');
 				anchor.innerHTML = '';
@@ -392,7 +392,7 @@
 						const translation = document.createElement('div');
 						translation.onclick = () => {
 							console.log(`${targetLanguage} clicked`);
-							textHistory.removeTranslation({ textLine: currentLine.textLine, targetLanguage });
+							textHistory.removeTranslation({ sentence: currentLine.sentence, targetLanguage });
 						};
 						translation.setAttribute('class', `lang-${targetLanguage}`);
 						translation.textContent = currentLine.translation[targetLanguage];
@@ -425,17 +425,17 @@
 
 		const translationElement = document.getElementById('translation');
 		const translationRequest = new TranslationRequest(({ translation, sentence, targetLanguage }) => {
-			textHistory.addTranslation({ textLine: sentence, translation, targetLanguage });
+			textHistory.addTranslation({ sentence, translation, targetLanguage });
 		});
 
 		modelUpdatedEmitter.onUpdate(() => {
-			const { textLine, translation } = textHistory.getCurrentLine();
+			const { sentence, translation } = textHistory.getCurrentLine();
 			const targetLanguages = gui.langs.getActiveLangs()
 			targetLanguages.forEach(targetLanguage => {
 				if (translation && translation[targetLanguage]) return;
 				
 				translationRequest.translate({
-					sentence: textLine,
+					sentence,
 					targetLanguage,
 				})
 			})

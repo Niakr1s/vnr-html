@@ -73,10 +73,13 @@
 			font-size: 12px;
 		}
 
-		.lang {
-			background-color: transparent;
-			border: none;
-			color: #BCBCBC;
+		.langs {
+			margin-right: 10px;
+		}
+
+		.langs > input {
+			border: 0;
+			margin: 0;
 		}
 	</style>
 </head>
@@ -84,11 +87,11 @@
 <body id="body">
 	<div class="flex">
 		<div class="homepage"><a href="https://github.com/Niakr1s/vnr-html">github</a></div>
-		
-		<select id="lang" class="lang flex-right">
-			<option value="ru">ru</option>
-			<option value="en">en</option>
-		</select>
+
+		<div id="langs" class="langs flex-right">
+			<input id="lang_en" name="en" type="checkbox" checked title="en">
+			<input id="lang_ru" name="ru" type="checkbox" checked title="ru">
+		</div>
 		
 		<button id="delete_button" class="red"><</button>
 		<button id="prev_button" class="green"><</button>
@@ -98,9 +101,7 @@
 		<button id="copy_button" class="white">copy</button>
 	</div>
 
-	<div class="bottom">
-		<div id="translation" class="translation"></div>
-	</div>
+	<div id="translation"class="bottom"></div>
 		
 	<div id="current_line" class="current_line"></div>
 
@@ -122,8 +123,9 @@
 					...options,
 				}
 
-				if (this._memory[options.sentence]) return;
-				this._memory[options.sentence] = true;
+				if (this._memory[options.sentence] && this._memory[options.sentence][options.targetLanguage]) return;
+				this._memory[options.sentence] ||= {}; 
+				this._memory[options.sentence][options.targetLanguage] = true;
 
 				try {
 					console.log(`fetching translation for ${options.sentence}`)
@@ -132,7 +134,10 @@
 				} catch {
 
 				} finally {
-					delete this._memory[options.sentence];
+					delete this._memory[options.sentence][options.targetLanguage];
+					if (Object.getOwnPropertyNames(this._memory[options.sentence]).length === 0) {
+						delete this._memory[options.sentence];
+					}
 				}
 			}
 		}
@@ -285,21 +290,23 @@
 		const gui = {
 			init() {
 				this.buttons.init();
-				this.langSelector.init();
+				this.langs.init();
 				this.update();
 				modelUpdatedEmitter.onUpdate(this.update.bind(this));
 			},
 
-			langSelector: {
-				element: document.getElementById("lang"),
-				getTargetLanguage() {
-					return this.element.value || 'en';
-				},
+			langs: {
+				elements: Array.from(document.getElementById("langs").children),
 				init() {
-					this.element.onchange = function() {
-						modelUpdatedEmitter.emit();
-					}
+					this.elements.forEach(el => {
+						el.onchange = function() {
+							modelUpdatedEmitter.emit();
+						}
+					})
 				},
+				getActiveLangs() {
+					return this.elements.filter(el => el.checked).map(el => el.name);
+				}
 			},
 
 			buttons: {
@@ -366,13 +373,17 @@
 				let currentLineElement = document.getElementById('current_line');
 				currentLineElement.textContent = currentLine.textLine;
 				
-				let translationElement = document.getElementById('translation');
-				const targetLanguage = gui.langSelector.getTargetLanguage();
-				if (currentLine.translation && currentLine.translation[targetLanguage]) {
-					translationElement.textContent = currentLine.translation[targetLanguage];
-				} else {
-					translationElement.textContent = '';
-				}
+				let anchor = document.getElementById('translation');
+				anchor.innerHTML = '';
+				const targetLanguages = gui.langs.getActiveLangs();
+				targetLanguages.forEach(targetLanguage => {
+					if (currentLine.translation && currentLine.translation[targetLanguage]) {
+						const translation = document.createElement('div');
+						translation.setAttribute('class', `lang-${targetLanguage}`);
+						translation.textContent = currentLine.translation[targetLanguage];
+						anchor.appendChild(translation);
+					}
+				})
 			},
 			showTextHistoryStatus() {
 				let textHistoryStatusElement = document.getElementById('text_history_status');
@@ -400,12 +411,14 @@
 
 		modelUpdatedEmitter.onUpdate(() => {
 			const { textLine, translation } = textHistory.getCurrentLine();
-			const targetLanguage = gui.langSelector.getTargetLanguage();
-			if (translation && translation[targetLanguage]) return;
-
-			translationRequest.translate({
-				sentence: textLine,
-				targetLanguage,
+			const targetLanguages = gui.langs.getActiveLangs()
+			targetLanguages.forEach(targetLanguage => {
+				if (translation && translation[targetLanguage]) return;
+				
+				translationRequest.translate({
+					sentence: textLine,
+					targetLanguage,
+				})
 			})
 		})
 	</script>

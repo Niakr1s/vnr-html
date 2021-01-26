@@ -389,7 +389,11 @@
 				let textHistoryStatusElement = document.getElementById('text_history_status');
 
 				function makeTextContent(current, max) {
-					return `${current}/${max}`;
+					function toString(num) {
+						return num.toString().padStart(2, '0');
+					}
+
+					return `${toString(current)}/${toString(max)}`;
 				};
 
 				textHistoryStatusElement.textContent = textHistory.isEmpty() ? makeTextContent(0, 0) : makeTextContent(textHistory.current + 1, textHistory.queue.length);

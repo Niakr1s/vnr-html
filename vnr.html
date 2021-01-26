@@ -431,7 +431,10 @@
 		});
 
 		modelUpdatedEmitter.onUpdate(() => {
-			const { sentence, translation } = textHistory.getCurrent();
+			const current = textHistory.getCurrent();
+			if (!current) return;
+			const { sentence, translation } = current;
+			
 			const targetLanguages = gui.langs.getActiveLangs()
 			targetLanguages.forEach(targetLanguage => {
 				if (translation && translation[targetLanguage]) return;

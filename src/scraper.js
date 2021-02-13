@@ -5,7 +5,7 @@ const newBrowser = () => {
 
   const getBrowser = async () => {
     if (_browser) return _browser;
-    _browser = require('puppeteer').launch();
+    _browser = require('puppeteer-core').launch({executablePath: '/usr/bin/chromium'});
     return _browser;
   }
   getBrowser();
